@@ -1,13 +1,11 @@
-<subheader-pn>
-
-</subheader-pn>
+<eform-subheader> </eform-subheader>
 
 <div class="container-fluid">
   <app-machine-area-pn-report-generator-form
     (saveReport)="onSaveReport($event)"
-    (generateReport)="onGenerateReport($event)">
+    (generateReport)="onGenerateReport($event)"
+  >
   </app-machine-area-pn-report-generator-form>
-  <app-machine-area-pn-report-preview-table
-    [reportData]="reportModel">
+  <app-machine-area-pn-report-preview-table [reportData]="reportModel">
   </app-machine-area-pn-report-preview-table>
 </div>

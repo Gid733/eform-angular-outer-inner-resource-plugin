@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2007 - 2019 Microting A/S
+Copyright (c) 2007 - 2021 Microting A/S
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,44 +22,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.Extensions.Logging;
-using Microting.eFormApi.BasePn.Abstractions;
-using Microting.eFormApi.BasePn.Infrastructure.Models.API;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities;
-using OuterInnerResource.Pn.Abstractions;
-using OuterInnerResource.Pn.Infrastructure.Models.ResourceTimeRegistrations;
-using Rebus.Bus;
-
 namespace OuterInnerResource.Pn.Services
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
+    using Microsoft.EntityFrameworkCore;
+    using Microting.eFormApi.BasePn.Abstractions;
+    using Microting.eFormApi.BasePn.Infrastructure.Models.API;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
+    using Abstractions;
+    using Infrastructure.Models.ResourceTimeRegistrations;
     public class ResourceTimeRegistrationService : IResourceTimeRegistrationService
     {
         private readonly OuterInnerResourcePnDbContext _dbContext;
-        private readonly IOuterInnerResourceLocalizationService _localizationService;
-        private readonly ILogger<InnerResourceService> _logger;
         private readonly IEFormCoreService _coreService;
-        private readonly IBus _bus;
-        private List<KeyValuePair<int, string>> _deviceUserNames;
-        private List<KeyValuePair<int, string>> _outerResourceNames;
-        private List<KeyValuePair<int, string>> _innerResourceNames;
+        private readonly List<KeyValuePair<int, string>> _deviceUserNames;
+        private readonly List<KeyValuePair<int, string>> _outerResourceNames;
+        private readonly List<KeyValuePair<int, string>> _innerResourceNames;
 
         public ResourceTimeRegistrationService(OuterInnerResourcePnDbContext dbContext,
-            IOuterInnerResourceLocalizationService localizationService,
-            ILogger<InnerResourceService> logger, 
-            IEFormCoreService coreService, 
-            IRebusService rebusService)
+            IEFormCoreService coreService)
         {
             _dbContext = dbContext;
-            _localizationService = localizationService;
-            _logger = logger;
             _coreService = coreService;
-            _bus = rebusService.GetBus();
             _deviceUserNames = new List<KeyValuePair<int, string>>();
             _outerResourceNames = new List<KeyValuePair<int, string>>();
             _innerResourceNames = new List<KeyValuePair<int, string>>();
@@ -67,11 +53,13 @@ namespace OuterInnerResource.Pn.Services
         
         public async Task<OperationDataResult<ResourceTimeRegistrationsModel>> GetAllRegistrations(int lastRegistrationId)
         {
-            ResourceTimeRegistrationsModel resourceTimeRegistrationsModel = new ResourceTimeRegistrationsModel();
-            resourceTimeRegistrationsModel.ResourceTimeRegistrationModels = new List<ResourceTimeRegistrationModel>();
+            var resourceTimeRegistrationsModel = new ResourceTimeRegistrationsModel
+            {
+                ResourceTimeRegistrationModels = new List<ResourceTimeRegistrationModel>()
+            };
 
             var results = await _dbContext.ResourceTimeRegistrations.AsNoTracking().Where(x => x.Id > lastRegistrationId).Take(10).OrderBy(x => x.Id).ToListAsync();
-            foreach (ResourceTimeRegistration resourceTimeRegistration in results)
+            foreach (var resourceTimeRegistration in results)
             {
                 var registration = new ResourceTimeRegistrationModel()
                 {
@@ -101,9 +89,8 @@ namespace OuterInnerResource.Pn.Services
                     }
                     catch
                     {
-                        
+                        // ignored
                     }
-                    
                 }
 
                 if (_outerResourceNames.Any(x => x.Key == registration.OuterResourceId))

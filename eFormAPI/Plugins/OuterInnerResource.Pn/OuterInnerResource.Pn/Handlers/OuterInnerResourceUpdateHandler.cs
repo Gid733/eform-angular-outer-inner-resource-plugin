@@ -22,27 +22,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using eFormCore;
-using Microsoft.EntityFrameworkCore;
-using Microting.eForm.Dto;
-using Microting.eForm.Infrastructure.Constants;
-using Microting.eForm.Infrastructure.Models;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities;
-using OuterInnerResource.Pn.Infrastructure.Helpers;
-using OuterInnerResource.Pn.Infrastructure.Models.InnerResources;
-using OuterInnerResource.Pn.Infrastructure.Models.OuterResources;
-using OuterInnerResource.Pn.Messages;
-using Rebus.Bus;
-using Rebus.Handlers;
 
 namespace OuterInnerResource.Pn.Handlers
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
+    using eFormCore;
+    using Infrastructure.Helpers;
+    using Messages;
+    using Microsoft.EntityFrameworkCore;
+    using Microting.eForm.Dto;
+    using Microting.eForm.Infrastructure.Constants;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities;
+    using Rebus.Bus;
+    using Rebus.Handlers;
+
     public class OuterInnerResourceUpdateHandler : IHandleMessages<OuterInnerResourceUpdate>
     {  
         private readonly Core _core;
@@ -59,16 +57,15 @@ namespace OuterInnerResource.Pn.Handlers
         #pragma warning disable 1998
         public async Task Handle(OuterInnerResourceUpdate message)
         {            
-            string lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.SdkeFormId.ToString()}";
+            var lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.SdkeFormId.ToString()}";
 
             var result = _dbContext.PluginConfigurationValues.AsNoTracking()
                 .FirstOrDefault(x => 
                     x.Name == lookup)?.Value;
-            if (result != null)
+            if (int.TryParse(result, out var eFormId))
             {
-                int eFormId = int.Parse(result);
-
-                List<SiteDto> sites = new List<SiteDto>();
+                
+                var sites = new List<SiteDto>();
             
                 lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.EnabledSiteIds.ToString()}"; 
                 result = _dbContext.PluginConfigurationValues.AsNoTracking()
@@ -76,13 +73,16 @@ namespace OuterInnerResource.Pn.Handlers
                         x.Name == lookup)?.Value;
                 if (result != null)
                 {
-                    string sdkSiteIds = result;
-                    foreach (string siteId in sdkSiteIds.Split(","))
+                    var sdkSiteIds = result;
+                    foreach (var siteId in sdkSiteIds.Split(","))
                     {
-                        sites.Add(await _core.SiteRead(int.Parse(siteId)));
+                        if (int.TryParse(siteId, out var siteIdResultParse))
+                        {
+                            sites.Add(await _core.SiteRead(siteIdResultParse));
+                        }
                     }
 
-                    Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource outerInnerResource =
+                    var outerInnerResource =
                         await _dbContext.OuterInnerResources.SingleOrDefaultAsync(x => 
                             x.Id == message.OuterInnerResourceId);
 
@@ -92,27 +92,27 @@ namespace OuterInnerResource.Pn.Handlers
         }
 
         private async Task UpdateSitesDeployed(
-            Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource outerInnerResource, List<SiteDto> sites, int eFormId)
+            OuterInnerResource outerInnerResource, List<SiteDto> sites, int eFormId)
         {
 
             WriteLogEntry("OuterInnerResourceUpdateHandler: UpdateSitesDeployed called");
-            List<int> siteIds = new List<int>();
+            var siteIds = new List<int>();
             
             if (outerInnerResource.WorkflowState == Constants.WorkflowStates.Created)
             {
                 if (sites.Any())
                 {
-                    foreach (SiteDto siteDto in sites)
+                    foreach (var siteDto in sites)
                     {
                         siteIds.Add(siteDto.SiteId);
-                        List<OuterInnerResourceSite> outerInnerResourceSites = await _dbContext.OuterInnerResourceSites.Where(
+                        var outerInnerResourceSites = await _dbContext.OuterInnerResourceSites.Where(
                             x =>
                                 x.MicrotingSdkSiteId == siteDto.SiteId
                                 && x.OuterInnerResourceId == outerInnerResource.Id
                                 && x.WorkflowState == Constants.WorkflowStates.Created).ToListAsync();
                         if (!outerInnerResourceSites.Any())
                         {
-                            OuterInnerResourceSite outerInnerResourceSite = new OuterInnerResourceSite
+                            var outerInnerResourceSite = new OuterInnerResourceSite
                             {
                                 OuterInnerResourceId = outerInnerResource.Id,
                                 MicrotingSdkSiteId = siteDto.SiteId,
@@ -141,7 +141,7 @@ namespace OuterInnerResource.Pn.Handlers
 
             if (sitesConfigured.Any())
             {
-                foreach (OuterInnerResourceSite outerInnerResourceSite in sitesConfigured)
+                foreach (var outerInnerResourceSite in sitesConfigured)
                 {
                     if (!siteIds.Contains(outerInnerResourceSite.MicrotingSdkSiteId) 
                         || outerInnerResource.WorkflowState == Constants.WorkflowStates.Removed)

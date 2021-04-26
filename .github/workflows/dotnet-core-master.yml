@@ -1,4 +1,4 @@
-name: .NET Core
+name: .NET Master
 
 on:
   push:
@@ -26,11 +26,10 @@ jobs:
       run: sleep 15
     - uses: getong/rabbitmq-action@v1.2
       with:
-        rabbitmq version: '3.8.2-management-alpine'
+        rabbitmq version: '3.8.9-management'
         host port: 5672
         rabbitmq user: 'admin'
         rabbitmq password: 'password'
-        rabbitmq vhost: 'vhost_name'
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
@@ -38,7 +37,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v1
       with:
-        node-version: '12.16.2'
+        node-version: '14.16.1'
     - name: Extract branch name
       id: extract_branch
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
@@ -62,7 +61,7 @@ jobs:
         cp -av main/eform-client/src/app/plugins/modules/outer-inner-resource-pn eform-angular-frontend/eform-client/src/app/plugins/modules/outer-inner-resource-pn
         cp -av main/eform-client/e2e/Tests/outer-inner-resource-settings eform-angular-frontend/eform-client/e2e/Tests/outer-inner-resource-settings
         cp -av main/eform-client/e2e/Tests/outer-inner-resource-general eform-angular-frontend/eform-client/e2e/Tests/outer-inner-resource-general
-        cp -av main/eform-client/e2e/Page\ objects/outer-inner-resource eform-angular-frontend/eform-client/e2e/Page\ objects/outer-inner-resource
+        cp -av main/eform-client/e2e/Page\ objects/OuterInnerResource eform-angular-frontend/eform-client/e2e/Page\ objects/OuterInnerResource
         cp -av main/eform-client/wdio-headless-plugin-step2.conf.js eform-angular-frontend/eform-client/wdio-headless-plugin-step2.conf.js
         cp -av main/eform-client/wdio-plugin-step2.conf.js eform-angular-frontend/eform-client/wdio-plugin-step2.conf.js
         mkdir -p eform-angular-frontend/eFormAPI/eFormAPI.Web/Plugins

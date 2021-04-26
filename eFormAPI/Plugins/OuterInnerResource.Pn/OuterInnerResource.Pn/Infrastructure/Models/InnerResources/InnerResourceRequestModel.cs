@@ -24,12 +24,11 @@ SOFTWARE.
 
 namespace OuterInnerResource.Pn.Infrastructure.Models.InnerResources
 {
-    public class InnerResourceRequestModel
+    using Microting.eFormApi.BasePn.Infrastructure.Models.Common;
+
+    public class InnerResourceRequestModel: PaginationModel
     {
         public string Sort { get; set; }
-        public int PageIndex { get; set; }
-        public int Offset { get; set; }
         public bool IsSortDsc { get; set; }
-        public int? PageSize { get; set; }
     }
 }

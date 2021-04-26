@@ -1,32 +1,50 @@
-import {Component, OnInit, ViewChild} from '@angular/core';
-import {PageSettingsModel} from 'src/app/common/models/settings';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
-  InnerResourcesPnRequestModel,
   InnerResourcesPnModel,
   OuterResourcesPnModel,
   OuterResourcesPnRequestModel,
-  InnerResourcePnModel
+  InnerResourcePnModel,
 } from '../../../models';
-import {OuterInnerResourcePnOuterResourceService, OuterInnerResourcePnInnerResourceService} from '../../../services';
-import {SharedPnService} from '../../../../shared/services';
-import {AuthService} from '../../../../../../common/services/auth';
-import {PluginClaimsHelper} from '../../../../../../common/helpers';
-import {OuterInnerResourcePnClaims} from '../../../enums';
+import {
+  OuterInnerResourcePnOuterResourceService,
+  OuterInnerResourcePnInnerResourceService,
+} from '../../../services';
+import { AuthService } from 'src/app/common/services';
+import { PluginClaimsHelper } from 'src/app/common/helpers';
+import { OuterInnerResourcePnClaims } from '../../../enums';
+import { Subscription } from 'rxjs';
+import { AutoUnsubscribe } from 'ngx-auto-unsubscribe';
+import { InnerResourcesStateService } from '../state/inner-resources-state-service';
+import { TableHeaderElementModel } from 'src/app/common/models';
 
+@AutoUnsubscribe()
 @Component({
   selector: 'app-machine-area-pn-machines-page',
   templateUrl: './inner-resources-page.component.html',
-  styleUrls: ['./inner-resources-page.component.scss']
+  styleUrls: ['./inner-resources-page.component.scss'],
 })
-export class InnerResourcesPageComponent implements OnInit {
-  @ViewChild('createMachineModal', {static: false}) createMachineModal;
-  @ViewChild('editMachineModal', {static: false}) editMachineModal;
-  @ViewChild('deleteMachineModal', {static: false}) deleteMachineModal;
-  localPageSettings: PageSettingsModel = new PageSettingsModel();
+export class InnerResourcesPageComponent implements OnInit, OnDestroy {
+  @ViewChild('createMachineModal', { static: false }) createMachineModal;
+  @ViewChild('editMachineModal', { static: false }) editMachineModal;
+  @ViewChild('deleteMachineModal', { static: false }) deleteMachineModal;
   machinesModel: InnerResourcesPnModel = new InnerResourcesPnModel();
-  machinesRequestModel: InnerResourcesPnRequestModel = new InnerResourcesPnRequestModel();
   mappingAreas: OuterResourcesPnModel = new OuterResourcesPnModel();
   name: string;
+
+  getAllMachinesSub$: Subscription;
+  getAllAreasSub$: Subscription;
+
+  tableHeaders: TableHeaderElementModel[] = [
+    { name: 'Id', elementId: 'idTableHeader', sortable: true },
+    { name: 'Name', elementId: 'nameTableHeader', sortable: true },
+    {
+      name: 'ExternalId',
+      elementId: 'externalIdTableHeader',
+      sortable: true,
+      visibleName: 'External ID',
+    },
+    { name: 'Actions', elementId: '', sortable: false },
+  ];
 
   get pluginClaimsHelper() {
     return PluginClaimsHelper;
@@ -36,28 +54,22 @@ export class InnerResourcesPageComponent implements OnInit {
     return OuterInnerResourcePnClaims;
   }
 
-  constructor(private sharedPnService: SharedPnService,
-              private machineAreaPnMachinesService: OuterInnerResourcePnInnerResourceService,
-              private authService: AuthService,
-              private machineAreaPnAreasService: OuterInnerResourcePnOuterResourceService) { }
+  constructor(
+    private machineAreaPnMachinesService: OuterInnerResourcePnInnerResourceService,
+    private authService: AuthService,
+    private machineAreaPnAreasService: OuterInnerResourcePnOuterResourceService,
+    public innerResourcesStateService: InnerResourcesStateService
+  ) {}
+
   get currentRole(): string {
     return this.authService.currentRole;
   }
-  ngOnInit() {
-    this.getLocalPageSettings();
-  }
 
-  getLocalPageSettings() {
-    this.localPageSettings = this.sharedPnService.getLocalPageSettings
-    ('machinesPnSettings', 'InnerResources').settings;
+  ngOnInit() {
     this.getAllInitialData();
   }
 
-  updateLocalPageSettings() {
-    this.sharedPnService.updateLocalPageSettings
-    ('machinesPnSettings', this.localPageSettings, 'InnerResources');
-    this.getLocalPageSettings();
-  }
+  ngOnDestroy() {}
 
   getAllInitialData() {
     this.getAllMachines();
@@ -65,22 +77,23 @@ export class InnerResourcesPageComponent implements OnInit {
   }
 
   getAllMachines() {
-    this.machinesRequestModel.pageSize = this.localPageSettings.pageSize;
-    this.machinesRequestModel.sort = this.localPageSettings.sort;
-    this.machinesRequestModel.isSortDsc = this.localPageSettings.isSortDsc;
-    this.machineAreaPnMachinesService.getAllMachines(this.machinesRequestModel).subscribe((data) => {
-      if (data && data.success) {
-        this.machinesModel = data.model;
-      }
-    });
+    this.getAllMachinesSub$ = this.innerResourcesStateService
+      .getAllMachines()
+      .subscribe((data) => {
+        if (data && data.success) {
+          this.machinesModel = data.model;
+        }
+      });
   }
 
   getMappedAreas() {
-    this.machineAreaPnAreasService.getAllAreas(new OuterResourcesPnRequestModel()).subscribe((data) => {
-      if (data && data.success) {
-        this.mappingAreas = data.model;
-      }
-    });
+    this.getAllAreasSub$ = this.machineAreaPnAreasService
+      .getAllAreas(new OuterResourcesPnRequestModel())
+      .subscribe((data) => {
+        if (data && data.success) {
+          this.mappingAreas = data.model;
+        }
+      });
   }
 
   showEditMachineModal(machine: InnerResourcePnModel) {
@@ -96,25 +109,22 @@ export class InnerResourcesPageComponent implements OnInit {
   }
 
   sortTable(sort: string) {
-    if (this.localPageSettings.sort === sort) {
-      this.localPageSettings.isSortDsc = !this.localPageSettings.isSortDsc;
-    } else {
-      this.localPageSettings.isSortDsc = false;
-      this.localPageSettings.sort = sort;
-    }
-    this.updateLocalPageSettings();
+    this.innerResourcesStateService.onSortTable(sort);
+    this.getAllMachines();
   }
 
-  changePage(e: any) {
-    if (e || e === 0) {
-      this.machinesRequestModel.offset = e;
-      if (e === 0) {
-        this.machinesRequestModel.pageIndex = 0;
-      } else {
-        this.machinesRequestModel.pageIndex
-          = Math.floor(e / this.machinesRequestModel.pageSize);
-      }
-      this.getAllMachines();
-    }
+  changePage(offset: number) {
+    this.innerResourcesStateService.changePage(offset);
+    this.getAllMachines();
+  }
+
+  onMachineDeleted() {
+    this.innerResourcesStateService.onDelete();
+    this.getAllMachines();
+  }
+
+  onPageSizeChanged(pageSize: number) {
+    this.innerResourcesStateService.updatePageSize(pageSize);
+    this.getAllMachines();
   }
 }

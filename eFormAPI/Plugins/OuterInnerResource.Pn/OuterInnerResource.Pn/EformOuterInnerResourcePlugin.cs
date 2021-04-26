@@ -22,32 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microting.eFormApi.BasePn;
-using Microting.eFormApi.BasePn.Infrastructure.Consts;
-using Microting.eFormApi.BasePn.Infrastructure.Database.Extensions;
-using Microting.eFormApi.BasePn.Infrastructure.Helpers;
-using Microting.eFormApi.BasePn.Infrastructure.Models.Application;
-using Microting.eFormApi.BasePn.Infrastructure.Models.Application.NavigationMenu;
-using Microting.eFormApi.BasePn.Infrastructure.Settings;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Factories;
-using OuterInnerResource.Pn.Abstractions;
-using OuterInnerResource.Pn.Infrastructure.Data.Seed;
-using OuterInnerResource.Pn.Infrastructure.Data.Seed.Data;
-using OuterInnerResource.Pn.Infrastructure.Models.Settings;
-using OuterInnerResource.Pn.Services;
-
 namespace OuterInnerResource.Pn
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection;
+    using Microsoft.AspNetCore.Builder;
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microting.eFormApi.BasePn;
+    using Microting.eFormApi.BasePn.Infrastructure.Consts;
+    using Microting.eFormApi.BasePn.Infrastructure.Database.Extensions;
+    using Microting.eFormApi.BasePn.Infrastructure.Helpers;
+    using Microting.eFormApi.BasePn.Infrastructure.Models.Application;
+    using Microting.eFormApi.BasePn.Infrastructure.Models.Application.NavigationMenu;
+    using Microting.eFormApi.BasePn.Infrastructure.Settings;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Factories;
+    using Abstractions;
+    using Infrastructure.Data.Seed;
+    using Infrastructure.Data.Seed.Data;
+    using Infrastructure.Models.Settings;
+    using Services;
+
     public class EformOuterInnerResourcePlugin : IEformPlugin
     {
         public string Name => "Microting Outer Inner Resource plugin";
@@ -76,12 +76,13 @@ namespace OuterInnerResource.Pn
             services.AddTransient<IResourceTimeRegistrationService, ResourceTimeRegistrationService>();
             services.AddTransient<IExcelService, ExcelService>();
             services.AddSingleton<IRebusService, RebusService>();
+            services.AddControllers();
         }
 
         public void AddPluginConfig(IConfigurationBuilder builder, string connectionString)
         {
-            OuterInnerResourceConfigurationSeedData seedData = new OuterInnerResourceConfigurationSeedData();
-            OuterInnerResourcePnContextFactory contextFactory = new OuterInnerResourcePnContextFactory();
+            var seedData = new OuterInnerResourceConfigurationSeedData();
+            var contextFactory = new OuterInnerResourcePnContextFactory();
             builder.AddPluginConfiguration(
                 connectionString,
                 seedData,
@@ -99,70 +100,62 @@ namespace OuterInnerResource.Pn
         public void ConfigureDbContext(IServiceCollection services, string connectionString)
         {
             _connectionString = connectionString;
-            if (connectionString.ToLower().Contains("convert zero datetime"))
-            {
-                services.AddDbContext<OuterInnerResourcePnDbContext>(o => o.UseMySql(connectionString,
-                    b => b.MigrationsAssembly(PluginAssembly().FullName)));
-            }
-            else
-            {
-                services.AddDbContext<OuterInnerResourcePnDbContext>(o => o.UseSqlServer(connectionString,
-                    b => b.MigrationsAssembly(PluginAssembly().FullName)));
-            }
+            services.AddDbContext<OuterInnerResourcePnDbContext>(o => o.UseMySql(connectionString,
+                b => b.MigrationsAssembly(PluginAssembly().FullName)));
 
-            OuterInnerResourcePnContextFactory contextFactory = new OuterInnerResourcePnContextFactory();
+            var contextFactory = new OuterInnerResourcePnContextFactory();
 
-            using (OuterInnerResourcePnDbContext context = contextFactory.CreateDbContext(new[] {connectionString}))
-            {  
+            using (var context = contextFactory.CreateDbContext(new[] { connectionString }))
+            {
                 context.Database.Migrate();
                 try
                 {
                     _outerResourceName = context.PluginConfigurationValues.SingleOrDefault(x => x.Name == "OuterInnerResourceSettings:OuterResourceName")?.Value;
                     _innerResourceName = context.PluginConfigurationValues.SingleOrDefault(x => x.Name == "OuterInnerResourceSettings:InnerResourceName")?.Value;
-                    string temp = context.PluginConfigurationValues
+                    var temp = context.PluginConfigurationValues
                         .SingleOrDefault(x => x.Name == "OuterInnerResourceSettings:MaxParallelism")?.Value;
                     _maxParallelism = string.IsNullOrEmpty(temp) ? 1 : int.Parse(temp);
 
                     temp = context.PluginConfigurationValues
                         .SingleOrDefault(x => x.Name == "OuterInnerResourceSettings:NumberOfWorkers")?.Value;
                     _numberOfWorkers = string.IsNullOrEmpty(temp) ? 1 : int.Parse(temp);
-                } catch {}
-                
+                }
+                catch
+                {
+                    // ignored
+                }
             }
 
             // Seed database
             SeedDatabase(connectionString);
-            
-            
+
+
         }
 
         public void Configure(IApplicationBuilder appBuilder)
         {
-            IServiceProvider serviceProvider = appBuilder.ApplicationServices;
-            IRebusService rebusService = serviceProvider.GetService<IRebusService>();
-            if (!_connectionString.Contains("..."))
-            {
-                rebusService.Start(_connectionString, _maxParallelism, _numberOfWorkers);
-            }
+            var serviceProvider = appBuilder.ApplicationServices;
+            var rebusService = serviceProvider.GetService<IRebusService>();
+            rebusService.Start(_connectionString, _maxParallelism, _numberOfWorkers);
         }
 
         public List<PluginMenuItemModel> GetNavigationMenu(IServiceProvider serviceProvider)
         {
-            var pluginMenu = new List<PluginMenuItemModel>()
-                {
-                    new PluginMenuItemModel
+            var pluginMenu = new List<PluginMenuItemModel>
+            {
+                new PluginMenuItemModel
                     {
                         Name = "Dropdown",
                         E2EId = "outer-inner-resource-pn",
                         Link = "",
                         Type = MenuItemTypeEnum.Dropdown,
                         Position = 0,
-                        Translations = new List<PluginMenuTranslationModel>()
+                        Translations = new List<PluginMenuTranslationModel>
                         {
                             new PluginMenuTranslationModel
                             {
                                  LocaleName = LocaleNames.English,
-                                 Name = "Outer/inner resources",
+                                 Name = "Outer/Inner resources",
                                  Language = LanguageNames.English,
                             },
                             new PluginMenuTranslationModel
@@ -174,20 +167,20 @@ namespace OuterInnerResource.Pn
                             new PluginMenuTranslationModel
                             {
                                  LocaleName = LocaleNames.Danish,
-                                 Name = "Ydre/indre resourcer",
+                                 Name = "Ydre/Indre resourcer",
                                  Language = LanguageNames.Danish,
                             }
                         },
-                        ChildItems = new List<PluginMenuItemModel>()
+                        ChildItems = new List<PluginMenuItemModel>
                         {
                             new PluginMenuItemModel
                             {
-                                Name = "Planning",
-                                E2EId = "items-planning-pn-plannings",
-                                Link = "/plugins/items-planning-pn/plannings",
+                                Name = _innerResourceName,
+                                E2EId = "outer-inner-resource-pn-inner-resources",
+                                Link = "/plugins/outer-inner-resource-pn/inner-resources",
                                 Type = MenuItemTypeEnum.Link,
                                 Position = 0,
-                                MenuTemplate = new PluginMenuTemplateModel()
+                                MenuTemplate = new PluginMenuTemplateModel
                                 {
                                     Name = _innerResourceName,
                                     E2EId = "outer-inner-resource-pn-inner-resources",
@@ -198,19 +191,19 @@ namespace OuterInnerResource.Pn
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.English,
-                                            Name = _innerResourceName,
+                                            Name = "Inner resources",
                                             Language = LanguageNames.English,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.German,
-                                            Name = _innerResourceName,
+                                            Name = "Interne ressourcen",
                                             Language = LanguageNames.German,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.Danish,
-                                            Name = _innerResourceName,
+                                            Name = "Indre resourcer",
                                             Language = LanguageNames.Danish,
                                         },
                                     }
@@ -220,19 +213,19 @@ namespace OuterInnerResource.Pn
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.English,
-                                            Name = _innerResourceName,
+                                            Name = "Inner resources",
                                             Language = LanguageNames.English,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.German,
-                                            Name = _innerResourceName,
+                                            Name = "Interne ressourcen",
                                             Language = LanguageNames.German,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.Danish,
-                                            Name = _innerResourceName,
+                                            Name = "Indre resourcer",
                                             Language = LanguageNames.Danish,
                                         },
                                     }
@@ -244,7 +237,7 @@ namespace OuterInnerResource.Pn
                                 Link = "/plugins/outer-inner-resource-pn/outer-resources",
                                 Type = MenuItemTypeEnum.Link,
                                 Position = 1,
-                                MenuTemplate = new PluginMenuTemplateModel()
+                                MenuTemplate = new PluginMenuTemplateModel
                                 {
                                     Name = _outerResourceName,
                                     E2EId = "outer-inner-resource-pn-outer-resources",
@@ -255,19 +248,19 @@ namespace OuterInnerResource.Pn
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.English,
-                                            Name = _outerResourceName,
+                                            Name = "Outer resources",
                                             Language = LanguageNames.English,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.German,
-                                            Name = _outerResourceName,
+                                            Name = "Externe ressourcen",
                                             Language = LanguageNames.German,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.Danish,
-                                            Name = _outerResourceName,
+                                            Name = "Ydre resourcer",
                                             Language = LanguageNames.Danish,
                                         },
                                     }
@@ -277,19 +270,19 @@ namespace OuterInnerResource.Pn
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.English,
-                                            Name = _outerResourceName,
+                                            Name = "Outer resources",
                                             Language = LanguageNames.English,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.German,
-                                            Name = _outerResourceName,
+                                            Name = "Externe ressourcen",
                                             Language = LanguageNames.German,
                                         },
                                         new PluginMenuTranslationModel
                                         {
                                             LocaleName = LocaleNames.Danish,
-                                            Name = _outerResourceName,
+                                            Name = "Ydre resourcer",
                                             Language = LanguageNames.Danish,
                                         },
                                     }
@@ -301,11 +294,11 @@ namespace OuterInnerResource.Pn
                                 Link = "/plugins/outer-inner-resource-pn/reports",
                                 Type = MenuItemTypeEnum.Link,
                                 Position = 2,
-                                MenuTemplate = new PluginMenuTemplateModel()
+                                MenuTemplate = new PluginMenuTemplateModel
                                 {
                                     Name = "Reports",
-                                    E2EId = "outer-inner-resource-pn-outer-resources",
-                                    DefaultLink = "/plugins/outer-inner-resource-pn/outer-resources",
+                                    E2EId = "outer-inner-resource-pn-reports",
+                                    DefaultLink = "/plugins/outer-inner-resource-pn/reports",
                                     Permissions = new List<PluginMenuTemplatePermissionModel>(),
                                     Translations = new List<PluginMenuTranslationModel>
                                     {
@@ -353,42 +346,42 @@ namespace OuterInnerResource.Pn
                             }
                         }
                     }
-                };
+            };
 
             return pluginMenu;
         }
 
         public MenuModel HeaderMenu(IServiceProvider serviceProvider)
         {
-            IOuterInnerResourceLocalizationService localizationService = serviceProvider
+            var localizationService = serviceProvider
                 .GetService<IOuterInnerResourceLocalizationService>();
 
-            MenuModel result = new MenuModel();
-            result.LeftMenu.Add(new MenuItemModel()
+            var result = new MenuModel();
+            result.LeftMenu.Add(new MenuItemModel
             {
                 Name = localizationService.GetString("OuterInnerResource"),
                 E2EId = "outer-inner-resource-pn",
                 Link = "",
-                Guards = new List<string>() { OuterInnerResourceClaims.AccessOuterInnerResourcePlugin },
-                MenuItems = new List<MenuItemModel>()
+                Guards = new List<string> { OuterInnerResourceClaims.AccessOuterInnerResourcePlugin },
+                MenuItems = new List<MenuItemModel>
                 {
-                    new MenuItemModel()
+                    new MenuItemModel
                     {
-//                        Name = localizationService.GetString("Machines"),
+                        // Name = localizationService.GetString("Machines"),
                         Name = _innerResourceName,
-                        E2EId = $"outer-inner-resource-pn-inner-resources",
-                        Link = $"/plugins/outer-inner-resource-pn/inner-resources",
+                        E2EId = "outer-inner-resource-pn-inner-resources",
+                        Link = "/plugins/outer-inner-resource-pn/inner-resources",
                         Position = 0,
                     },
-                    new MenuItemModel()
+                    new MenuItemModel
                     {
-//                        Name = localizationService.GetString("Areas"),
+                        // Name = localizationService.GetString("Areas"),
                         Name = _outerResourceName,
-                        E2EId = $"outer-inner-resource-pn-outer-resources",
-                        Link = $"/plugins/outer-inner-resource-pn/outer-resources",
+                        E2EId = "outer-inner-resource-pn-outer-resources",
+                        Link = "/plugins/outer-inner-resource-pn/outer-resources",
                         Position = 1,
                     },
-                    new MenuItemModel()
+                    new MenuItemModel
                     {
                         Name = localizationService.GetString("Reports"),
                         E2EId = "outer-inner-resource-pn-reports",
@@ -403,12 +396,10 @@ namespace OuterInnerResource.Pn
         public void SeedDatabase(string connectionString)
         {
             // Get DbContext
-            OuterInnerResourcePnContextFactory contextFactory = new OuterInnerResourcePnContextFactory();
-            using (OuterInnerResourcePnDbContext context = contextFactory.CreateDbContext(new[] { connectionString }))
-            {
-                // Seed configuration
-                OuterInnerResourcePluginSeed.SeedData(context);
-            }
+            var contextFactory = new OuterInnerResourcePnContextFactory();
+            using var context = contextFactory.CreateDbContext(new[] { connectionString });
+            // Seed configuration
+            OuterInnerResourcePluginSeed.SeedData(context);
         }
 
         public PluginPermissionsManager GetPermissionsManager(string connectionString)

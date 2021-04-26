@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2007 - 2019 Microting A/S
+Copyright (c) 2007 - 2021 Microting A/S
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using eFormCore;
 using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities;
 using OuterInnerResource.Pn.Infrastructure.Helpers;
 using OuterInnerResource.Pn.Infrastructure.Models.InnerResources;
 using OuterInnerResource.Pn.Infrastructure.Models.OuterResources;
 using OuterInnerResource.Pn.Messages;
+using Microsoft.EntityFrameworkCore;
 using Rebus.Handlers;
 
 namespace OuterInnerResource.Pn.Handlers
 {
+    using OuterInnerResource = Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource;
+
     public class OuterInnerResourceDeleteHandler : IHandleMessages<OuterInnerResourceDelete>
     {    
         private readonly Core _core;
@@ -62,44 +65,43 @@ namespace OuterInnerResource.Pn.Handlers
 
         private async Task DeleteFromInnerResource(InnerResourceModel innerResourceModel)
         {
-            List<Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource> outerInnerResources = _dbContext.OuterInnerResources.Where(x =>
-                x.InnerResourceId == innerResourceModel.Id).ToList();
+            var outerInnerResources =  await _dbContext.OuterInnerResources
+                .Where(x => x.InnerResourceId == innerResourceModel.Id)
+                .ToListAsync();
             await DeleteRelationships(outerInnerResources);
         }
 
         private async Task DeleteFromOuterResource(OuterResourceModel outerResourceModel)
         {
-            List<Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource> outerInnerResources = _dbContext.OuterInnerResources.Where(x =>
-                x.OuterResourceId == outerResourceModel.Id).ToList();
+            var outerInnerResources = _dbContext.OuterInnerResources
+                .Where(x => x.OuterResourceId == outerResourceModel.Id)
+                .ToList();
             await DeleteRelationships(outerInnerResources);
 
         }
 
-        private async Task DeleteRelationships(List<Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource> outerInnerResources)
+        private async Task DeleteRelationships(IEnumerable<OuterInnerResource> outerInnerResources)
         {
-            foreach (Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource outerInnerResource in outerInnerResources)
+            foreach (var outerInnerResource in outerInnerResources)
             {
-                IQueryable<OuterInnerResourceSite> outerInnerResourceSites = _dbContext.OuterInnerResourceSites.Where(x => x.OuterInnerResourceId == outerInnerResource.Id);
-                int numSites = outerInnerResourceSites.Count();
-                int sitesDeleted = 0;
-                foreach (OuterInnerResourceSite outerInnerResourceSite in outerInnerResourceSites)
+                var outerInnerResourceSites = _dbContext.OuterInnerResourceSites.Where(x => x.OuterInnerResourceId == outerInnerResource.Id);
+                var numSites = outerInnerResourceSites.Count();
+                var sitesDeleted = 0;
+                foreach (var outerInnerResourceSite in outerInnerResourceSites.Where(x => x.MicrotingSdkCaseId != null))
                 {
                     try
                     {
-                        if (outerInnerResourceSite.MicrotingSdkCaseId != null) {
-                            bool result = await _core.CaseDelete((int)outerInnerResourceSite.MicrotingSdkCaseId);
-                            if (result)
-                            {
-                                await outerInnerResourceSite.Delete(_dbContext);
-                                sitesDeleted += 1;
-                            }
+                        var result = await _core.CaseDelete((int)outerInnerResourceSite.MicrotingSdkCaseId);
+                        if (result)
+                        {
+                            await outerInnerResourceSite.Delete(_dbContext);
+                            sitesDeleted += 1;
                         }
                     }
                     catch
                     {
-                        
+                        // ignored
                     }
-                    
                 }
 
                 if (numSites == sitesDeleted)

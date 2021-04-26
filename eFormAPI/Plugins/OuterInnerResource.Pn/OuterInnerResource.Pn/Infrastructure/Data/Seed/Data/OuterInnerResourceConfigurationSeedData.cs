@@ -29,81 +29,83 @@ namespace OuterInnerResource.Pn.Infrastructure.Data.Seed.Data
 {
     public class OuterInnerResourceConfigurationSeedData : IPluginConfigurationSeedData
     {
+        private const string OuterInnerResourceSettingsName = "OuterInnerResourceSettings";
+
         public PluginConfigurationValue[] Data => new[]
         {
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:SdkConnectionString",
-                Value = "..."
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:LogLevel",
-                Value = "4"
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:LogLimit",
-                Value = "25000"
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:MaxParallelism",
-                Value = "1"
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:NumberOfWorkers",
-                Value = "1"
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:Token",
-                Value = "..."
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:SdkeFormId",
-                Value = "..."
-            },
-            new PluginConfigurationValue()
-            {
-                Name = "OuterInnerResourceSettings:EnabledSiteIds",
+                Name = $"{OuterInnerResourceSettingsName}:SdkConnectionString",
                 Value = ""
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:QuickSyncEnabled",
-                Value = "false"
+                Name = $"{OuterInnerResourceSettingsName}:LogLevel",
+                Value = "4"
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:ReportTimeType",
+                Name = $"{OuterInnerResourceSettingsName}:LogLimit",
+                Value = "25000"
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:MaxParallelism",
                 Value = "1"
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:OuterResourceName",
+                Name = $"{OuterInnerResourceSettingsName}:NumberOfWorkers",
+                Value = "1"
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:Token",
+                Value = ""
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:SdkeFormId",
+                Value = ""
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:EnabledSiteIds",
+                Value = ""
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:QuickSyncEnabled",
+                Value = "false"
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:ReportTimeType",
+                Value = "1"
+            },
+            new PluginConfigurationValue()
+            {
+                Name = $"{OuterInnerResourceSettingsName}:OuterResourceName",
                 Value = "Outer resources"
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:InnerResourceName",
+                Name = $"{OuterInnerResourceSettingsName}:InnerResourceName",
                 Value = "Inner resources"
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:OuterTotalTimeName",
+                Name = $"{OuterInnerResourceSettingsName}:OuterTotalTimeName",
                 Value = "Working day"
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:InnerTotalTimeName",
+                Name = $"{OuterInnerResourceSettingsName}:InnerTotalTimeName",
                 Value = "Time tracking for the whole day"
             },
             new PluginConfigurationValue()
             {
-                Name = "OuterInnerResourceSettings:ShouldCheckAllCases",
+                Name = $"{OuterInnerResourceSettingsName}:ShouldCheckAllCases",
                 Value = "false"
             },
         };

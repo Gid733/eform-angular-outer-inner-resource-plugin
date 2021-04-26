@@ -1,38 +1,41 @@
-import outerInnerResourceOuterResourcePage , {ListRowObject} from '../../../Page objects/outer-inner-resource/outer-inner-resource-outer-resource.page';
-import outerInnerResourceModalPage from '../../../Page objects/outer-inner-resource/outer-inner-resource-modal.page';
+import outerInnerResourceOuterResourcePage from '../../../Page objects/OuterInnerResource/OuterInnerResourceOuterResource.page';
+import outerInnerResourceModalPage from '../../../Page objects/OuterInnerResource/OuterInnerResourceModal.page';
 import loginPage from '../../../Page objects/Login.page';
-import {Guid} from 'guid-typescript';
+import { generateRandmString } from '../../../Helpers/helper-functions';
 
 const expect = require('chai').expect;
-
+const newName = generateRandmString();
 
 describe('Machine Area Machine Add', function () {
   before(function () {
     loginPage.open('/auth');
     loginPage.login();
-    const newEformLabel = 'Machine Area machine eForm';
-    //outerInnerResourceOuterResourcePage.createNewEform(newEformLabel);
     outerInnerResourceOuterResourcePage.goToOuterResource();
-    // $('#newAreaBtn').waitForDisplayed({timeout: 20000});
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
   });
   it('should add machine with only name', function () {
-    outerInnerResourceOuterResourcePage.newOuterResourceBtn.click();
-    const newName = Guid.create().toString();
-    $('#createOuterResourceName').waitForDisplayed({timeout: 20000});
-    outerInnerResourceModalPage.outerResourceCreateNameInput.addValue(newName);
-    outerInnerResourceModalPage.outerResourceCreateSaveBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
-    const listRowObject = new ListRowObject(1);
+    const rowNumBeforeCreate = outerInnerResourceOuterResourcePage.rowNum;
+    outerInnerResourceOuterResourcePage.createNewInnerResource(newName);
+    expect(outerInnerResourceOuterResourcePage.rowNum).eq(
+      rowNumBeforeCreate + 1
+    );
+    const listRowObject = outerInnerResourceOuterResourcePage.getOuterObjectByName(
+      newName
+    );
     expect(listRowObject.name, 'Name in table is incorrect').equal(newName);
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
   });
-  it('should clean up', function () {
-    const listRowObject = new ListRowObject(outerInnerResourceOuterResourcePage.rowNum());
-    $('#outerResourceDeleteBtn').waitForDisplayed({timeout: 20000});
-    listRowObject.deleteBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
-    outerInnerResourceModalPage.outerResourceDeleteDeleteBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
+  it('should not create machine without name', function () {
+    const rowNumBeforeCreate = outerInnerResourceOuterResourcePage.rowNum;
+    outerInnerResourceOuterResourcePage.openCreateModal();
+    expect(
+      outerInnerResourceModalPage.outerResourceCreateSaveBtn.isEnabled()
+    ).eq(false);
+    outerInnerResourceOuterResourcePage.closeCreateModal(true);
+    expect(
+      outerInnerResourceOuterResourcePage.rowNum,
+      'An extra outerResource was created'
+    ).eq(rowNumBeforeCreate);
+  });
+  after('clean up', function () {
+    outerInnerResourceOuterResourcePage.getOuterObjectByName(newName).delete();
   });
 });

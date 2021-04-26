@@ -1,18 +1,18 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {FormsModule, ReactiveFormsModule} from '@angular/forms';
-import {TranslateModule} from '@ngx-translate/core';
-import {MDBBootstrapModule} from 'angular-bootstrap-md';
-import {NgSelectModule} from '@ng-select/ng-select';
-import {MY_MOMENT_FORMATS} from 'src/app/common/helpers';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { TranslateModule } from '@ngx-translate/core';
+import { MDBBootstrapModule } from 'angular-bootstrap-md';
+import { NgSelectModule } from '@ng-select/ng-select';
 
 import {
   OuterInnerResourcePnOuterResourceService,
-  OuterInnerResourcePnInnerResourceService, OuterInnerResourcePnReportsService,
-  OuterInnerResourcePnSettingsService
+  OuterInnerResourcePnInnerResourceService,
+  OuterInnerResourcePnReportsService,
+  OuterInnerResourcePnSettingsService,
 } from './services';
-import {OuterInnerResourcePnLayoutComponent} from './layouts';
-import {SharedPnModule} from '../shared/shared-pn.module';
+import { OuterInnerResourcePnLayoutComponent } from './layouts';
+import { SharedPnModule } from '../shared/shared-pn.module';
 import {
   OuterResourceCreateComponent,
   OuterResourceDeleteComponent,
@@ -26,11 +26,13 @@ import {
   ReportGeneratorFormComponent,
   OuterInnerResourceSettingsComponent,
   ReportGeneratorContainerComponent,
+  InnerResourcesStateService,
+  OuterResourcesStateService,
 } from './components';
-import {FontAwesomeModule} from '@fortawesome/angular-fontawesome';
-import {OuterInnerResourcePnRouting} from './outer-inner-resource-pn-routing.module';
-import {OwlDateTimeModule} from 'ng-pick-datetime-ex';
-
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { OuterInnerResourcePnRouting } from './outer-inner-resource-pn-routing.module';
+import { OwlDateTimeModule } from 'ng-pick-datetime-ex';
+import { EformSharedModule } from 'src/app/common/modules/eform-shared/eform-shared.module';
 
 @NgModule({
   imports: [
@@ -43,7 +45,8 @@ import {OwlDateTimeModule} from 'ng-pick-datetime-ex';
     NgSelectModule,
     ReactiveFormsModule,
     FontAwesomeModule,
-    OwlDateTimeModule
+    OwlDateTimeModule,
+    EformSharedModule,
   ],
   declarations: [
     OuterResourcesPageComponent,
@@ -58,13 +61,15 @@ import {OwlDateTimeModule} from 'ng-pick-datetime-ex';
     OuterInnerResourceSettingsComponent,
     ReportGeneratorContainerComponent,
     ReportGeneratorFormComponent,
-    ReportPreviewTableComponent
+    ReportPreviewTableComponent,
   ],
   providers: [
     OuterInnerResourcePnOuterResourceService,
     OuterInnerResourcePnInnerResourceService,
     OuterInnerResourcePnSettingsService,
     OuterInnerResourcePnReportsService,
-  ]
+    InnerResourcesStateService,
+    OuterResourcesStateService,
+  ],
 })
-export class OuterInnerResourcePnModule { }
+export class OuterInnerResourcePnModule {}

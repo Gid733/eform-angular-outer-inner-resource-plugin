@@ -1,26 +1,21 @@
-import outerInnerResourceInnerResourcePage , {ListRowObject} from '../../../Page objects/outer-inner-resource/outer-inner-resource-inner-resource.page';
-import outerInnerResourceModalPage from '../../../Page objects/outer-inner-resource/outer-inner-resource-modal.page';
+import outerInnerResourceInnerResourcePage, {
+  ListRowObject,
+} from '../../../Page objects/OuterInnerResource/OuterInnerResourceInnerResource.page';
+import outerInnerResourceModalPage from '../../../Page objects/OuterInnerResource/OuterInnerResourceModal.page';
 import loginPage from '../../../Page objects/Login.page';
-import {Guid} from 'guid-typescript';
+import { generateRandmString } from '../../../Helpers/helper-functions';
 
 const expect = require('chai').expect;
+const newName = generateRandmString();
 
 describe('Machine Area Area edit', function () {
   before(function () {
     loginPage.open('/auth');
     loginPage.login();
-    const newEformLabel = 'Number 1';
-    // machineAreaAreaPage.createNewEform(newEformLabel);
     outerInnerResourceInnerResourcePage.goToInnerResource();
-    // $('#newAreaBtn').waitForDisplayed({timeout: 20000});
   });
   it('should create a new area', function () {
-    outerInnerResourceInnerResourcePage.newInnerResourceBtn.click();
-    const newName = Guid.create().toString();
-    $('#createInnerResourceName').waitForDisplayed({timeout: 20000});
-    outerInnerResourceModalPage.innerResourceCreateNameInput.addValue(newName);
-    outerInnerResourceModalPage.innerResourceCreateSaveBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
+    outerInnerResourceInnerResourcePage.createNewInnerResource(newName);
   });
   // TODO Can't change name.
   // it('should edit area', function () {
@@ -36,12 +31,10 @@ describe('Machine Area Area edit', function () {
   //   browser.waitForVisible(listRowObject.updateBtn, 20000);
   //   expect(listRowObject.name, 'Name in table is incorrect').equal(newName);
   // });
-  it('should clean up', function () {
-    browser.pause(500);
-    const listRowObject = new ListRowObject(outerInnerResourceInnerResourcePage.rowNum());
-    $('#innerResourceDeleteBtn').waitForDisplayed({timeout: 20000});
-    listRowObject.deleteBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
-    outerInnerResourceModalPage.innerResourceDeleteDeleteBtn.click();
+  after('clean up', function () {
+    const listRowObject = outerInnerResourceInnerResourcePage.getInnerObjectByName(
+      newName
+    );
+    listRowObject.delete();
   });
 });

@@ -29,7 +29,6 @@ using System.Threading.Tasks;
 using eFormCore;
 using Microsoft.EntityFrameworkCore;
 using Microting.eForm.Dto;
-using Microting.eForm.Infrastructure.Models;
 using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
 using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
 using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities;
@@ -58,27 +57,26 @@ namespace OuterInnerResource.Pn.Handlers
         #pragma warning disable 1998
         public async Task Handle(OuterInnerResourceCreate message)
         {            
-            string lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.SdkeFormId.ToString()}"; 
+            var lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.SdkeFormId.ToString()}"; 
             
             LogEvent($"lookup is {lookup}");
 
-            string result = _dbContext.PluginConfigurationValues.AsNoTracking()
+            var result = _dbContext.PluginConfigurationValues.AsNoTracking()
                 .FirstOrDefault(x =>
                     x.Name == lookup)
                 ?.Value;
             
             LogEvent($"result is {result}");
 
-            if (result != null)
+            if (int.TryParse(result, out var eFormId))
             {
-                int eFormId = int.Parse(result);
 
-                List<SiteDto> sites = new List<SiteDto>();
+                var sites = new List<SiteDto>();
             
                 lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.EnabledSiteIds.ToString()}"; 
                 LogEvent($"lookup is {lookup}");
 
-                string sdkSiteIds = _dbContext.PluginConfigurationValues.AsNoTracking()
+                var sdkSiteIds = _dbContext.PluginConfigurationValues.AsNoTracking()
                     .FirstOrDefault(x => 
                         x.Name == lookup)?.Value;
 
@@ -86,10 +84,13 @@ namespace OuterInnerResource.Pn.Handlers
                 if (sdkSiteIds != null)
                 {
                     LogEvent($"sdkSiteIds is {sdkSiteIds}");
-                    foreach (string siteId in sdkSiteIds.Split(","))
+                    foreach (var siteId in sdkSiteIds.Split(","))
                     {
                         LogEvent($"found siteId {siteId}");
-                        sites.Add(await _core.SiteRead(int.Parse(siteId)));
+                        if(int.TryParse(siteId, out var siteIdResultParse))
+                        {
+                            sites.Add(await _core.SiteRead(siteIdResultParse));
+                        }
                     }
                 }
 
@@ -108,9 +109,9 @@ namespace OuterInnerResource.Pn.Handlers
         {
             if (model.RelatedOuterResourcesIds != null)
             {
-                foreach (int id in model.RelatedOuterResourcesIds)
+                foreach (var id in model.RelatedOuterResourcesIds)
                 {                
-                    OuterResource outerResource = _dbContext.OuterResources.SingleOrDefault(x => x.Id == id);
+                    var outerResource = _dbContext.OuterResources.SingleOrDefault(x => x.Id == id);
                     await CreateRelationships(model.Id, id, model.Name, outerResource.Name, sites, eFormId);              
                 }    
             }
@@ -120,9 +121,9 @@ namespace OuterInnerResource.Pn.Handlers
         {
             if (model.RelatedInnerResourcesIds != null)
             {
-                foreach (int id in model.RelatedInnerResourcesIds)
+                foreach (var id in model.RelatedInnerResourcesIds)
                 {
-                    InnerResource innerResource = _dbContext.InnerResources.SingleOrDefault(x => x.Id == id);
+                    var innerResource = _dbContext.InnerResources.SingleOrDefault(x => x.Id == id);
                     await CreateRelationships(id, model.Id, innerResource.Name, model.Name, sites, eFormId);
                 }    
             }
@@ -130,18 +131,19 @@ namespace OuterInnerResource.Pn.Handlers
 
         private async Task CreateRelationships(int innerResourceId, int outerResourceId, string innerResourceName, string outerResourceName, List<SiteDto> sites, int eFormId)
         {
-            Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities.OuterInnerResource outerInnerResource = _dbContext.OuterInnerResources.SingleOrDefault(x =>
+            var outerInnerResource = _dbContext.OuterInnerResources.SingleOrDefault(x =>
                     x.InnerResourceId == innerResourceId && x.OuterResourceId == outerResourceId);
 
             if (sites.Any())
             {
-                foreach (SiteDto siteDto in sites)
+                foreach (var siteDto in sites)
                 {
-                    List<OuterInnerResourceSite> siteMatch = await _dbContext.OuterInnerResourceSites.Where(x =>
-                        x.MicrotingSdkSiteId == siteDto.SiteId && x.OuterInnerResourceId == outerInnerResource.Id).ToListAsync();
+                    var siteMatch = await _dbContext.OuterInnerResourceSites
+                        .Where(x => x.MicrotingSdkSiteId == siteDto.SiteId && x.OuterInnerResourceId == outerInnerResource.Id)
+                        .ToListAsync();
                     if (!siteMatch.Any())
                     {
-                        OuterInnerResourceSite outerInnerResourceSite = new OuterInnerResourceSite
+                        var outerInnerResourceSite = new OuterInnerResourceSite
                         {
                             OuterInnerResourceId = outerInnerResource.Id,
                             MicrotingSdkSiteId = siteDto.SiteId,
@@ -158,7 +160,7 @@ namespace OuterInnerResource.Pn.Handlers
         {
             try
             {                
-                ConsoleColor oldColor = Console.ForegroundColor;
+                var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.WriteLine("[DBG] " + appendText);
                 Console.ForegroundColor = oldColor;
@@ -172,7 +174,7 @@ namespace OuterInnerResource.Pn.Handlers
         {
             try
             {
-                ConsoleColor oldColor = Console.ForegroundColor;
+                var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("[ERR] " + appendText);
                 Console.ForegroundColor = oldColor;

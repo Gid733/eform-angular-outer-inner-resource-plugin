@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2007 - 2019 Microting A/S
+Copyright (c) 2007 - 2021 Microting A/S
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,26 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using eFormCore;
-using Microsoft.EntityFrameworkCore;
-using Microting.eForm.Dto;
-using Microting.eForm.Infrastructure;
-using Microting.eForm.Infrastructure.Constants;
-using Microting.eForm.Infrastructure.Data.Entities;
-using Microting.eForm.Infrastructure.Models;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
-using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Entities;
-using OuterInnerResource.Pn.Infrastructure.Helpers;
-using OuterInnerResource.Pn.Messages;
-using Rebus.Handlers;
-
 namespace OuterInnerResource.Pn.Handlers
 {
+    using eFormCore;
+    using Infrastructure.Helpers;
+    using Messages;
+    using Microsoft.EntityFrameworkCore;
+    using Microting.eForm.Infrastructure.Constants;
+    using Microting.eForm.Infrastructure.Models;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data;
+    using Microting.eFormOuterInnerResourceBase.Infrastructure.Data.Constants;
+    using Rebus.Handlers;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
+
     public class OuterInnerResourcePosteFormHandler : IHandleMessages<OuterInnerResourcePosteForm>
     {
         private readonly Core _core;
@@ -55,13 +51,13 @@ namespace OuterInnerResource.Pn.Handlers
 
         public async Task Handle(OuterInnerResourcePosteForm message)
         {
-            OuterInnerResourceSite outerInnerResourceSite =
+            var outerInnerResourceSite =
                 await _dbContext.OuterInnerResourceSites.SingleOrDefaultAsync(x =>
-                    x.Id == message.OuterInnerResourceSiteId).ConfigureAwait(false);
-            await using MicrotingDbContext microtingDbContext = _core.dbContextHelper.GetDbContext();
-            Site siteDto = await microtingDbContext.Sites.SingleAsync(x => x.Id == outerInnerResourceSite.MicrotingSdkSiteId);
-            Language language = await microtingDbContext.Languages.SingleAsync(x => x.Id == siteDto.LanguageId);
-            MainElement mainElement = await _core.ReadeForm(message.SdkeFormId, language);
+                    x.Id == message.OuterInnerResourceSiteId);
+            await using var sdkDbContext = _core.DbContextHelper.GetDbContext();
+            var siteDto = await sdkDbContext.Sites.SingleAsync(x => x.Id == outerInnerResourceSite.MicrotingSdkSiteId);
+            var language = await sdkDbContext.Languages.SingleAsync(x => x.Id == siteDto.LanguageId);
+            var mainElement = await _core.ReadeForm(message.SdkeFormId, language);
 
             mainElement.Label = outerInnerResourceSite.OuterInnerResource.InnerResource.Name;
             mainElement.ElementList[0].Label = outerInnerResourceSite.OuterInnerResource.InnerResource.Name;
@@ -69,51 +65,50 @@ namespace OuterInnerResource.Pn.Handlers
             mainElement.StartDate = DateTime.Now.ToUniversalTime();
             mainElement.Repeated = 0;
 
-            string lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.QuickSyncEnabled.ToString()}";
+            var lookup = $"OuterInnerResourceSettings:{OuterInnerResourceSettingsEnum.QuickSyncEnabled}";
 
-            bool quickSyncEnabled = _dbContext.PluginConfigurationValues.AsNoTracking()
-                                        .FirstOrDefault(x =>
-                                            x.Name == lookup)?.Value == "true";
+            var quickSyncEnabled = _dbContext.PluginConfigurationValues
+                .AsNoTracking()
+                .FirstOrDefault(x =>x.Name == lookup)?.Value == "true";
 
             if (quickSyncEnabled)
             {
                 mainElement.EnableQuickSync = true;
             }
-
-            List<FolderDto> folderDtos = await _core.FolderGetAll(true).ConfigureAwait(false);
-
-            bool folderAlreadyExist = false;
-            int _microtingUId = 0;
-            int sdkFolderId = 0;
-            foreach (FolderDto folderDto in folderDtos)
+            
+            var folderQuery = sdkDbContext.Folders
+                .AsNoTracking()
+                .Where(x => x.WorkflowState != Constants.WorkflowStates.Removed)
+                .Where(x => x.FolderTranslations.Any(y =>
+                    y.Name == outerInnerResourceSite.OuterInnerResource.OuterResource.Name))
+                .Select(x => new {x.MicrotingUid, x.Id});
+            var folder = await folderQuery
+                .FirstOrDefaultAsync();
+            
+            if (folder == null)
             {
-                if (folderDto.Name == outerInnerResourceSite.OuterInnerResource.OuterResource.Name)
+                var languages = await sdkDbContext.Languages
+                    .AsNoTracking()
+                    .Where(x => x.WorkflowState != Constants.WorkflowStates.Removed)
+                    .ToListAsync();
+                var names = new List<KeyValuePair<string, string>>();
+                var descriptions = new List<KeyValuePair<string, string>>();
+
+                foreach (var languageLocal in languages)
                 {
-                    folderAlreadyExist = true;
-                    _microtingUId = (int)folderDto.MicrotingUId;
-                    sdkFolderId = (int)folderDto.Id;
+                    names.Add(new KeyValuePair<string, string>(languageLocal.LanguageCode, outerInnerResourceSite.OuterInnerResource.OuterResource.Name));
+                    descriptions.Add(new KeyValuePair<string, string>(languageLocal.LanguageCode, ""));
                 }
+
+                await _core.FolderCreate(names, descriptions, null);
+                
+                folder = await folderQuery
+                    .FirstOrDefaultAsync();
             }
 
-            if (!folderAlreadyExist)
-            {
-                await _core.FolderCreate(outerInnerResourceSite.OuterInnerResource.OuterResource.Name,
-                    "", null).ConfigureAwait(false);
-                folderDtos = await _core.FolderGetAll(true).ConfigureAwait(false);
+            mainElement.CheckListFolderName = folder.MicrotingUid.ToString();
 
-                foreach (FolderDto folderDto in folderDtos)
-                {
-                    if (folderDto.Name == outerInnerResourceSite.OuterInnerResource.OuterResource.Name)
-                    {
-                        _microtingUId = (int) folderDto.MicrotingUId;
-                        sdkFolderId = (int)folderDto.Id;
-                    }
-                }
-            }
-
-            mainElement.CheckListFolderName = _microtingUId.ToString();
-
-            DataElement dataElement = (DataElement)mainElement.ElementList[0];
+            var dataElement = (DataElement)mainElement.ElementList[0];
 
             dataElement.DataItemList.Add(new None(
                 1,
@@ -125,7 +120,7 @@ namespace OuterInnerResource.Pn.Handlers
                 -999,
                 false));
 
-            int? sdkCaseId = await _core.CaseCreate(mainElement, "", (int)siteDto.MicrotingUid, sdkFolderId).ConfigureAwait(false);
+            var sdkCaseId = await _core.CaseCreate(mainElement, "", (int)siteDto.MicrotingUid, folder.Id);
 
             outerInnerResourceSite.MicrotingSdkCaseId = sdkCaseId;
             await outerInnerResourceSite.Update(_dbContext).ConfigureAwait(false);

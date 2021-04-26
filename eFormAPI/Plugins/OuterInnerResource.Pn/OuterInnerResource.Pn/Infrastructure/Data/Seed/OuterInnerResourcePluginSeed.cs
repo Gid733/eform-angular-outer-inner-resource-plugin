@@ -1,7 +1,7 @@
 ﻿/*
 The MIT License (MIT)
 
-Copyright (c) 2007 - 2019 Microting A/S
+Copyright (c) 2007 - 2021 Microting A/S
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,13 +35,13 @@ namespace OuterInnerResource.Pn.Infrastructure.Data.Seed
     {
         public static void SeedData(OuterInnerResourcePnDbContext dbContext)
         {
-            OuterInnerResourceConfigurationSeedData seedData = new OuterInnerResourceConfigurationSeedData();
-            PluginConfigurationValue[] configurationList = seedData.Data;
-            foreach (PluginConfigurationValue configurationItem in configurationList)
+            var seedData = new OuterInnerResourceConfigurationSeedData();
+            var configurationList = seedData.Data;
+            foreach (var configurationItem in configurationList)
             {
                 if (!dbContext.PluginConfigurationValues.Any(x=>x.Name == configurationItem.Name))
                 {
-                    PluginConfigurationValue newConfigValue = new PluginConfigurationValue()
+                    var newConfigValue = new PluginConfigurationValue()
                     {
                         Name = configurationItem.Name,
                         Value = configurationItem.Value,

@@ -1,30 +1,23 @@
-import outerInnerResourceOuterResourcePage , {ListRowObject} from '../../../Page objects/outer-inner-resource/outer-inner-resource-outer-resource.page';
-import outerInnerResourceModalPage from '../../../Page objects/outer-inner-resource/outer-inner-resource-modal.page';
+import outerInnerResourceOuterResourcePage, {
+  ListRowObject,
+} from '../../../Page objects/OuterInnerResource/OuterInnerResourceOuterResource.page';
+import outerInnerResourceModalPage from '../../../Page objects/OuterInnerResource/OuterInnerResourceModal.page';
 import loginPage from '../../../Page objects/Login.page';
-import {Guid} from 'guid-typescript';
+import { generateRandmString } from '../../../Helpers/helper-functions';
 
 const expect = require('chai').expect;
-
+const newName = generateRandmString();
 
 describe('Machine Area Machine edit', function () {
   before(function () {
     loginPage.open('/auth');
     loginPage.login();
-    const newEformLabel = 'Machine Area machine eForm';
-    //outerInnerResourceOuterResourcePage.createNewEform(newEformLabel);
     outerInnerResourceOuterResourcePage.goToOuterResource();
-    // $('#newAreaBtn').waitForDisplayed({timeout: 20000});
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
   });
-  it('should create a new machine', function () {
-    outerInnerResourceOuterResourcePage.newOuterResourceBtn.click();
-    const newName = Guid.create().toString();
-    $('#createOuterResourceName').waitForDisplayed({timeout: 20000});
-    outerInnerResourceModalPage.outerResourceCreateNameInput.addValue(newName);
-    outerInnerResourceModalPage.outerResourceCreateSaveBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
+  it('should add machine', function () {
+    outerInnerResourceOuterResourcePage.createNewInnerResource(newName);
   });
-  // can't change name.
+  // TODO can't change name.
   // it('should edit machine', function () {
   //   const listRowObject = new ListRowObject(outerInnerResourceOuterResourcePage.rowNum());
   //   const newName = 'New Name';
@@ -38,13 +31,12 @@ describe('Machine Area Machine edit', function () {
   //   browser.waitForVisible(listRowObject.updateBtn, 20000);
   //   expect(listRowObject.name, 'Name in table is incorrect').equal(newName);
   // });
-  it('should clean up', function () {
-    browser.pause(500);
-    const listRowObject = new ListRowObject(outerInnerResourceOuterResourcePage.rowNum());
-    $('#outerResourceDeleteBtn').waitForDisplayed({timeout: 20000});
-    listRowObject.deleteBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
-    outerInnerResourceModalPage.outerResourceDeleteDeleteBtn.click();
-    $('#spinner-animation').waitForDisplayed({timeout: 90000, reverse: true});
+  after('should delete machine', function () {
+    const rowNumBeforeDelete = outerInnerResourceOuterResourcePage.rowNum;
+    outerInnerResourceOuterResourcePage.getOuterObjectByName(newName).delete();
+    expect(
+      outerInnerResourceOuterResourcePage.rowNum,
+      'Area is not deleted'
+    ).eq(rowNumBeforeDelete - 1);
   });
 });
