@@ -100,9 +100,14 @@ namespace OuterInnerResource.Pn
         public void ConfigureDbContext(IServiceCollection services, string connectionString)
         {
             _connectionString = connectionString;
-            services.AddDbContext<OuterInnerResourcePnDbContext>(o => o.UseMySql(connectionString,
-                b => b.MigrationsAssembly(PluginAssembly().FullName)));
-
+            services.AddDbContext<OuterInnerResourcePnDbContext>(o =>
+                o.UseMySql(connectionString, new MariaDbServerVersion(
+                    new Version(10, 4, 0)), mySqlOptionsAction: builder =>
+                {
+                    builder.EnableRetryOnFailure();
+                    builder.MigrationsAssembly(PluginAssembly().FullName);
+                }));
+            
             var contextFactory = new OuterInnerResourcePnContextFactory();
 
             using (var context = contextFactory.CreateDbContext(new[] { connectionString }))

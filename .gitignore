@@ -30,4 +30,4 @@ eFormAPI/Plugins/OuterInnerResource.Pn/OuterInnerResource.Pn.Test/.idea
 *.cache
 *.props
 *.targets
-
+.idea
